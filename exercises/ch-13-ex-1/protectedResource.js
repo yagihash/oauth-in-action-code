@@ -92,7 +92,7 @@ app.get('/userinfo', getAccessToken, requireAccessToken, userInfoEndpoint);
 app.post('/userinfo', getAccessToken, requireAccessToken, userInfoEndpoint);
 
 
-var server = app.listen(9002, 'localhost', function () {
+var server = app.listen(9002, '0.0.0.0', function () {
   var host = server.address().address;
   var port = server.address().port;
 

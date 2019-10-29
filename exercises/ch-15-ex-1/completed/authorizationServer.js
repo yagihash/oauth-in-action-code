@@ -320,7 +320,7 @@ var decodeClientCredentials = function(auth) {
 // clear the database
 nosql.clear();
 
-var server = app.listen(9001, 'localhost', function () {
+var server = app.listen(9001, '0.0.0.0', function () {
   var host = server.address().address;
   var port = server.address().port;
 

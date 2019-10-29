@@ -134,7 +134,7 @@ var encodeClientCredentials = function(clientId, clientSecret) {
 	return new Buffer(querystring.escape(clientId) + ':' + querystring.escape(clientSecret)).toString('base64');
 };
 
-var server = app.listen(9002, 'localhost', function () {
+var server = app.listen(9002, '0.0.0.0', function () {
   var host = server.address().address;
   var port = server.address().port;
 
