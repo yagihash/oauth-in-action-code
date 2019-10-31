@@ -27,14 +27,14 @@ var authServer = {
  * Add the client information in here
  */
 var client = {
-	"client_id": "",
-	"client_secret": "",
+	"client_id": "oauth-client-1",
+	"client_secret": "oauth-client-secret-1",
 	"redirect_uris": ["http://localhost:9000/callback"]
 };
 
 var protectedResource = 'http://localhost:9002/resource';
 
-var state = null;
+var state = randomstring.generate();
 
 var access_token = null;
 var scope = null;
@@ -44,27 +44,60 @@ app.get('/', function (req, res) {
 });
 
 app.get('/authorize', function(req, res){
-
-	/*
-	 * Send the user to the authorization server
-	 */
-	
+  var authorizeUrl = buildUrl(authServer.authorizationEndpoint, {
+    response_type: 'code',
+    client_id: client.client_id,
+    redirect_uri: client.redirect_uris[0],
+    state: state
+  })
+  res.redirect(authorizeUrl)
 });
 
 app.get('/callback', function(req, res){
-
-	/*
-	 * Parse the response from the authorization server and get a token
-	 */
-	
+  if (req.query.state != state) {
+    res.render('error', { error: 'invalid state string' })
+    return
+  }
+  var code = req.query.code
+  var form_data = qs.stringify({
+    grant_type: 'authorization_code',
+    code: code,
+    redirect_uri: client.redirect_uris[0],
+  })
+  var headers = {
+    'content-type': 'application/x-www-form-urlencoded',
+    'authorization': 'Basic ' + encodeClientCredentials(client.client_id, client.client_secret),
+  }
+  var tokRes = request('POST', authServer.tokenEndpoint, {
+    body: form_data,
+    headers: headers,
+  })
+  var body = JSON.parse(tokRes.getBody())
+  access_token = body.access_token
+	res.render('index', {access_token: access_token, scope: scope});
 });
 
 app.get('/fetch_resource', function(req, res) {
+  if (access_token === null) {
+    res.redirect('/authorize')
+    return
+  }
+  var headers = {
+    'authorization': 'Bearer ' + access_token,
+  }
+  var resource = request('POST', protectedResource, {
+    headers: headers,
+  })
 
-	/*
-	 * Use the access token to call the resource server
-	 */
-	
+  if (resource.statusCode >= 200 && resource.statusCode < 300) {
+    var body = JSON.parse(resource.getBody())
+
+    res.render('data', { resource: body })
+    return
+  } else {
+    res.redirect('/authorize')
+    return
+  }
 });
 
 var buildUrl = function(base, options, hash) {
@@ -79,7 +112,7 @@ var buildUrl = function(base, options, hash) {
 	if (hash) {
 		newUrl.hash = hash;
 	}
-	
+
 	return url.format(newUrl);
 };
 
@@ -94,4 +127,4 @@ var server = app.listen(9000, '0.0.0.0', function () {
   var port = server.address().port;
   console.log('OAuth Client is listening at http://%s:%s', host, port);
 });
- 
+
