@@ -32,11 +32,11 @@ var getAccessToken = function(req, res, next) {
 	} else if (req.query && req.query.access_token) {
 		inToken = req.query.access_token
 	}
-	
+
 	console.log('Incoming token: %s', inToken);
 	nosql.one(function(token) {
 		if (token.access_token == inToken) {
-			return token;	
+			return token;
 		}
 	}, function(err, token) {
 		if (token) {
@@ -58,6 +58,22 @@ var requireAccessToken = function(req, res, next) {
 	}
 };
 
+var filterFavoritesWithScope = function(scope, favorites) {
+  var ret = {
+    movies: [],
+    foods: [],
+    music: [],
+  }
+  if (__.contains(scope, 'movies'))
+    ret.movies = favorites.movies
+  if (__.contains(scope, 'foods'))
+    ret.foods = favorites.foods
+  if (__.contains(scope, 'music'))
+    ret.music = favorites.music
+
+  return ret
+}
+
 var aliceFavorites = {
 	'movies': ['The Multidmensional Vector', 'Space Fights', 'Jewelry Boss'],
 	'foods': ['bacon', 'pizza', 'bacon pizza'],
@@ -71,14 +87,17 @@ var bobFavorites = {
 };
 
 app.get('/favorites', getAccessToken, requireAccessToken, function(req, res) {
-	
-	/*
-	 * Get different user information based on the information of who approved the token
-	 */
-	
-	var unknown = {user: 'Unknown', favorites: {movies: [], foods: [], music: []}};
-	res.json(unknown);
-
+  switch (req.access_token.user) {
+    case 'alice':
+      res.json({ user: 'Alice', favorites: filterFavoritesWithScope(req.access_token.scope, aliceFavorites) })
+      break
+    case 'bob':
+      res.json({ user: 'Bob', favorites: filterFavoritesWithScope(req.access_token.scope, bobFavorites) })
+      break
+    default:
+	    res.json({user: 'Unknown', favorites: {movies: [], foods: [], music: []}});
+      break
+  }
 });
 
 var server = app.listen(9002, '0.0.0.0', function () {
@@ -87,4 +106,4 @@ var server = app.listen(9002, '0.0.0.0', function () {
 
   console.log('OAuth Resource Server is listening at http://%s:%s', host, port);
 });
- 
+
