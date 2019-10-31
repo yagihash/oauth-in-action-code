@@ -32,11 +32,11 @@ var getAccessToken = function(req, res, next) {
 	} else if (req.query && req.query.access_token) {
 		inToken = req.query.access_token
 	}
-	
+
 	console.log('Incoming token: %s', inToken);
 	nosql.one(function(token) {
 		if (token.access_token == inToken) {
-			return token;	
+			return token;
 		}
 	}, function(err, token) {
 		if (token) {
@@ -58,29 +58,31 @@ var requireAccessToken = function(req, res, next) {
 	}
 };
 
+var requireScope = function(scope) {
+  return function(req, res, next) {
+    if (__.contains(req.access_token.scope, scope)) {
+      next()
+    } else {
+      res.set('www-authenticate', 'bearer realm=localhost:9002 error="insufficient_scope", scope="' + scope + '"')
+      res.status(403).end()
+    }
+  }
+}
+
 var savedWords = [];
 
-app.get('/words', getAccessToken, requireAccessToken, function(req, res) {
-	/*
-	 * Make this function require the "read" scope
-	 */
+app.get('/words', getAccessToken, requireAccessToken, requireScope('read'), function(req, res) {
 	res.json({words: savedWords.join(' '), timestamp: Date.now()});
 });
 
-app.post('/words', getAccessToken, requireAccessToken, function(req, res) {
-	/*
-	 * Make this function require the "write" scope
-	 */
+app.post('/words', getAccessToken, requireAccessToken, requireScope('write'), function(req, res) {
 	if (req.body.word) {
 		savedWords.push(req.body.word);
 	}
 	res.status(201).end();
 });
 
-app.delete('/words', getAccessToken, requireAccessToken, function(req, res) {
-	/*
-	 * Make this function require the "delete" scope
-	 */
+app.delete('/words', getAccessToken, requireAccessToken, requireScope('delete'), function(req, res) {
 	savedWords.pop();
 	res.status(204).end();
 });
@@ -91,4 +93,4 @@ var server = app.listen(9002, '0.0.0.0', function () {
 
   console.log('OAuth Resource Server is listening at http://%s:%s', host, port);
 });
- 
+
