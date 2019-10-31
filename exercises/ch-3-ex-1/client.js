@@ -54,7 +54,7 @@ app.get('/authorize', function(req, res){
 });
 
 app.get('/callback', function(req, res){
-  if (req.query.state != state) {
+  if (req.query.state !== state) {
     res.render('error', { error: 'invalid state string' })
     return
   }
